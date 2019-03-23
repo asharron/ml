@@ -4,6 +4,7 @@ from sklearn.impute import SimpleImputer
 from sklearn.pipeline import Pipeline, FeatureUnion
 from sklearn.preprocessing import StandardScaler, OrdinalEncoder, OneHotEncoder, LabelEncoder
 from sklearn.linear_model import LinearRegression
+from sklearn.tree import DecisionTreeRegressor
 from sklearn.metrics import accuracy_score
 import os
 import numpy as np
@@ -58,7 +59,7 @@ housingData = readData()
 dataTrain, dataTest = splitData(housingData, .20, "Id")
 
 #State which columns we want to drop
-colDropList = ["Id", "MiscFeature", "Alley", "FireplaceQu", "PoolQC", "Fence"]
+colDropList = ["Id","Neighborhood", "" "MiscFeature", "Alley", "FireplaceQu", "PoolQC", "Fence"]
 #Get all the columns that aren't numerical
 catCols = getAttributes(dataTrain, excludeTypes=["int64", "float64"])
 #Only remove the rows with an NaN value in columns that we aren't dropping already
@@ -81,13 +82,12 @@ numPipeline = Pipeline([
 
 catPipeline = Pipeline([
     ("selector", DataFrameSelector(catAttr)),
-    ("labelEncoder", OrdinalEncoder()),
-    #("oneHotEncoder", OneHotEncoder(sparse=False, categories="auto"))
+    ("oneHotEncoder", OneHotEncoder(sparse=False, categories="auto"))
 ])
 
 fullPipeline = FeatureUnion(transformer_list=[
     ("numPipeline", numPipeline),
-    ("catPipeline", catPipeline)
+    #("catPipeline", catPipeline)
 ])
 
 dataTrainCleaned = fullPipeline.fit_transform(dataTrain)
@@ -95,6 +95,12 @@ print(dataTrainCleaned.shape)
 dataTestCleaned = fullPipeline.fit_transform(dataTest)
 print(dataTestCleaned.shape)
 
+print("Regression model ------")
 linReg = LinearRegression()
 linReg.fit(dataTrainCleaned, trainLabels)
 print(linReg.score(dataTestCleaned, testLabels))
+
+print("Tree Model --------")
+tree = DecisionTreeRegressor()
+tree.fit(dataTrainCleaned, trainLabels)
+print(tree.score(dataTestCleaned, testLabels))
