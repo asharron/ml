@@ -3,6 +3,8 @@ from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.impute import SimpleImputer
 from sklearn.pipeline import Pipeline, FeatureUnion
 from sklearn.preprocessing import StandardScaler, OrdinalEncoder, OneHotEncoder
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import accuracy_score
 import os
 import numpy as np
 import hashlib
@@ -53,10 +55,22 @@ def splitData(data, testRatio, idCol, hash=hashlib.md5):
     return data.loc[~inTestSet], data.loc[inTestSet]
 
 housingData = readData()
+#TODO: Streamline and refactor dropping of ID column
 dataTrain, dataTest = splitData(housingData, .20, "Id")
+
+
 numAttr = getAttributes(dataTrain, excludeTypes=["object"])
 
 dropList = ["MiscFeature", "Alley", "FireplaceQu", "PoolQC", "Fence"]
+categoryList = getAttributes(dataTrain, excludeTypes=["int64", "float64"])
+catAttr = [cat for cat in categoryList if not cat in dropList]
+
+dataLabels = CleanCategories(catAttr).fit_transform(dataTrain)['SalePrice']
+dataTestLabels = CleanCategories(catAttr).fit_transform(dataTest)['SalePrice']
+dataTrain = dataTrain.drop(['Id', 'SalePrice'], axis=1)
+dataTest = dataTest.drop(['Id', 'SalePrice'], axis=1)
+
+numAttr = getAttributes(dataTrain, excludeTypes=["object"])
 categoryList = getAttributes(dataTrain, excludeTypes=["int64", "float64"])
 catAttr = [cat for cat in categoryList if not cat in dropList]
 
@@ -80,5 +94,8 @@ fullPipeline = FeatureUnion(transformer_list=[
     ("catPipeline", catPipeline)
 ])
 
+
 dataCleaned = fullPipeline.fit_transform(dataTrain)
-print(dataCleaned.shape)
+linReg = LinearRegression()
+linReg.fit(dataCleaned, dataLabels)
+print(linReg.score(dataCleaned, dataLabels))
