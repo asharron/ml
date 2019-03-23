@@ -2,7 +2,7 @@ import pandas as pd
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.impute import SimpleImputer
 from sklearn.pipeline import Pipeline, FeatureUnion
-from sklearn.preprocessing import StandardScaler, OrdinalEncoder, OneHotEncoder
+from sklearn.preprocessing import StandardScaler, OrdinalEncoder, OneHotEncoder, LabelEncoder
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import accuracy_score
 import os
@@ -22,17 +22,16 @@ class DataFrameSelector(BaseEstimator, TransformerMixin):
         else:
             return X[self.attributeNames]
 
-#Drops and fills missing data
-class CleanCategories(BaseEstimator, TransformerMixin):
-    def __init__(self, catAttributes):
-        self.catAttributes = catAttributes
-        return
-    def fit(self, X, y=None):
-        return self
-    def transform(self, X):
-        X = X.dropna(subset=self.catAttributes)
-        return X
-
+#Returns the data cleaned of null values, and the labels with it
+def cleanData(data, colsToDrop=[], rowsToDrop=[], labelId="SalePrice"):
+    #Get rid of columns we don't want
+    data = data.drop(columns=colsToDrop)
+    #Drop rows that have null values
+    data = data.dropna(subset=rowsToDrop)
+    #Grab the labels
+    labels = data[labelId]
+    data = data.drop(columns=labelId)
+    return data, labels
 
 #Returns a list of attributes based on data type
 #Meant to be a helper for DataFrameSelector
@@ -54,39 +53,36 @@ def splitData(data, testRatio, idCol, hash=hashlib.md5):
     inTestSet = ids.apply(lambda id_: testSetCheck(id_, testRatio, hash))
     return data.loc[~inTestSet], data.loc[inTestSet]
 
+#Read the data and split it
 housingData = readData()
-#TODO: Streamline and refactor dropping of ID column
 dataTrain, dataTest = splitData(housingData, .20, "Id")
 
+#State which columns we want to drop
+colDropList = ["Id", "MiscFeature", "Alley", "FireplaceQu", "PoolQC", "Fence"]
+#Get all the columns that aren't numerical
+catCols = getAttributes(dataTrain, excludeTypes=["int64", "float64"])
+#Only remove the rows with an NaN value in columns that we aren't dropping already
+rowDropList = [cat for cat in catCols if not cat in colDropList]
+#Get the updated training set with its labels
+dataTrain, trainLabels = cleanData(dataTrain, colDropList, rowDropList)
+dataTest, testLabels = cleanData(dataTest, colDropList, rowDropList)
 
+#Only get the numerical columns
 numAttr = getAttributes(dataTrain, excludeTypes=["object"])
-
-dropList = ["MiscFeature", "Alley", "FireplaceQu", "PoolQC", "Fence"]
-categoryList = getAttributes(dataTrain, excludeTypes=["int64", "float64"])
-catAttr = [cat for cat in categoryList if not cat in dropList]
-
-dataLabels = CleanCategories(catAttr).fit_transform(dataTrain)['SalePrice']
-dataTestLabels = CleanCategories(catAttr).fit_transform(dataTest)['SalePrice']
-dataTrain = dataTrain.drop(['Id', 'SalePrice'], axis=1)
-dataTest = dataTest.drop(['Id', 'SalePrice'], axis=1)
-
-numAttr = getAttributes(dataTrain, excludeTypes=["object"])
-categoryList = getAttributes(dataTrain, excludeTypes=["int64", "float64"])
-catAttr = [cat for cat in categoryList if not cat in dropList]
+#Only get the categorical columns
+catAttr = getAttributes(dataTrain, excludeTypes=["int64", "float64"])
 
 #Steps to create the numerical pipeline
 numPipeline = Pipeline([
-    ("cleaner", CleanCategories(catAttr)),
     ("selector", DataFrameSelector(numAttr)),
     ("imputer", SimpleImputer(strategy="median")),
     ("std_scaler", StandardScaler())
 ])
 
 catPipeline = Pipeline([
-    ("cleaner", CleanCategories(catAttr)),
     ("selector", DataFrameSelector(catAttr)),
-    ("ordEncoder", OrdinalEncoder()),
-    ("oneHotEncoder", OneHotEncoder(sparse=False, categories="auto"))
+    ("labelEncoder", OrdinalEncoder()),
+    #("oneHotEncoder", OneHotEncoder(sparse=False, categories="auto"))
 ])
 
 fullPipeline = FeatureUnion(transformer_list=[
@@ -94,8 +90,11 @@ fullPipeline = FeatureUnion(transformer_list=[
     ("catPipeline", catPipeline)
 ])
 
+dataTrainCleaned = fullPipeline.fit_transform(dataTrain)
+print(dataTrainCleaned.shape)
+dataTestCleaned = fullPipeline.fit_transform(dataTest)
+print(dataTestCleaned.shape)
 
-dataCleaned = fullPipeline.fit_transform(dataTrain)
 linReg = LinearRegression()
-linReg.fit(dataCleaned, dataLabels)
-print(linReg.score(dataCleaned, dataLabels))
+linReg.fit(dataTrainCleaned, trainLabels)
+print(linReg.score(dataTestCleaned, testLabels))
