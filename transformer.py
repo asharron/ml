@@ -1,20 +1,36 @@
 import pandas as pd
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.impute import SimpleImputer
-from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import StandardScaler
+from sklearn.pipeline import Pipeline, FeatureUnion
+from sklearn.preprocessing import StandardScaler, OrdinalEncoder, OneHotEncoder
 import os
 import numpy as np
 import hashlib
 
 #Returns a data frame of the list of attributes passed to it
 class DataFrameSelector(BaseEstimator, TransformerMixin):
-    def __init__(self, attributeNames):
+    def __init__(self, attributeNames, returnValues=True):
         self.attributeNames = attributeNames
+        self.returnValues = returnValues
     def fit(self, X, y=None):
         return self
     def transform(self, X):
-        return X[self.attributeNames].values
+        if self.returnValues:
+            return X[self.attributeNames].values
+        else:
+            return X[self.attributeNames]
+
+#Drops and fills missing data
+class CleanCategories(BaseEstimator, TransformerMixin):
+    def __init__(self, catAttributes):
+        self.catAttributes = catAttributes
+        return
+    def fit(self, X, y=None):
+        return self
+    def transform(self, X):
+        X = X.dropna(subset=self.catAttributes)
+        return X
+
 
 #Returns a list of attributes based on data type
 #Meant to be a helper for DataFrameSelector
@@ -37,15 +53,32 @@ def splitData(data, testRatio, idCol, hash=hashlib.md5):
     return data.loc[~inTestSet], data.loc[inTestSet]
 
 housingData = readData()
-dataTrain, dataTest = splitData(housingData, .20, 'Id')
+dataTrain, dataTest = splitData(housingData, .20, "Id")
 numAttr = getAttributes(dataTrain, excludeTypes=["object"])
-catAttr = getAttributes(dataTrain, excludeTypes=["int64", "float64"])
+
+dropList = ["MiscFeature", "Alley", "FireplaceQu", "PoolQC", "Fence"]
+categoryList = getAttributes(dataTrain, excludeTypes=["int64", "float64"])
+catAttr = [cat for cat in categoryList if not cat in dropList]
 
 #Steps to create the numerical pipeline
 numPipeline = Pipeline([
-    ('selector', DataFrameSelector(numAttr)),
-    ('imputer', SimpleImputer(strategy="median")),
-    ('std_scaler', StandardScaler())
+    ("cleaner", CleanCategories(catAttr)),
+    ("selector", DataFrameSelector(numAttr)),
+    ("imputer", SimpleImputer(strategy="median")),
+    ("std_scaler", StandardScaler())
 ])
 
-numDf = numPipeline.fit_transform(dataTrain)
+catPipeline = Pipeline([
+    ("cleaner", CleanCategories(catAttr)),
+    ("selector", DataFrameSelector(catAttr)),
+    ("ordEncoder", OrdinalEncoder()),
+    ("oneHotEncoder", OneHotEncoder(sparse=False, categories="auto"))
+])
+
+fullPipeline = FeatureUnion(transformer_list=[
+    ("numPipeline", numPipeline),
+    ("catPipeline", catPipeline)
+])
+
+dataCleaned = fullPipeline.fit_transform(dataTrain)
+print(dataCleaned.shape)
