@@ -1,12 +1,13 @@
 import pandas as pd
 import numpy as np
 from sklearn.base import BaseEstimator, TransformerMixin
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, cross_val_score, cross_val_predict
 from sklearn.pipeline import Pipeline, FeatureUnion
 from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import StandardScaler, OneHotEncoder, LabelEncoder
 from sklearn.feature_extraction import DictVectorizer
 from sklearn.linear_model import SGDClassifier
+from sklearn.metrics import confusion_matrix, recall_score, precision_score, roc_curve
 
 class DataFrameSelector(BaseEstimator, TransformerMixin):
     def __init__(self, attributes=[], returnValues=True):
@@ -46,6 +47,7 @@ def cleanData(data, toFill=[]):
     data = data.fillna(toFill)
     data["Embarked"] = data["Embarked"].apply(str)
     return data
+
 
 dataset = readData("train.csv")
 
@@ -89,6 +91,13 @@ print(dataTrainPrepared.shape)
 dataTestPrepared = fullPipeline.fit_transform(dataTest)
 print(dataTestPrepared.shape)
 
-sgd = SGDClassifier(random_state=42)
+sgd = SGDClassifier(max_iter=200,tol=0.01, random_state=42)
 sgd.fit(dataTrainPrepared, np.ravel(labelsTrain))
 print(sgd.score(dataTestPrepared, labelsTest))
+
+print(cross_val_score(sgd, dataTrainPrepared, np.ravel(labelsTrain), cv=5, scoring="accuracy"))
+predictions = cross_val_predict(sgd, dataTrainPrepared, np.ravel(labelsTrain), cv=5)
+
+print(confusion_matrix(np.ravel(labelsTrain), predictions))
+print(precision_score(np.ravel(labelsTrain), predictions))
+print(recall_score(np.ravel(labelsTrain), predictions))
