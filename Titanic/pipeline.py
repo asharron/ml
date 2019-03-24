@@ -19,10 +19,17 @@ def dropData(data, toDrop=[]):
     data = data.drop(columns=toDrop)
     return data
 
+def cleanData(data, toFill=[]):
+    toFill = {name: data[name].mode for name in toFill}
+    data = data.fillna(toFill)
+    return data
+
 dataset = readData("train.csv")
 
 dropList = ["Cabin", "Ticket", "Name", "PassengerId"]
+fillList = ["Embarked", "Sex"]
 dataset = dropData(data=dataset, toDrop=dropList)
+dataset = cleanData(data=dataset, toFill=fillList)
 numCols = dataset.shape[1]
 
 np.random.seed(42)
