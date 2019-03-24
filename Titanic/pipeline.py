@@ -90,5 +90,5 @@ dataTestPrepared = fullPipeline.fit_transform(dataTest)
 print(dataTestPrepared.shape)
 
 sgd = SGDClassifier(random_state=42)
-sgd.fit(dataTrainPrepared, labelsTrain)
+sgd.fit(dataTrainPrepared, np.ravel(labelsTrain))
 print(sgd.score(dataTestPrepared, labelsTest))
