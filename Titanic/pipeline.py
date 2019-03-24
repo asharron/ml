@@ -60,9 +60,9 @@ np.random.seed(42)
 #Split the datset into train and test, then into features and labels
 dataTrain, dataTest = train_test_split(dataset, test_size=.2)
 labelsTrain = dataTrain.iloc[:, 0:1]
-dataTrain = dataTrain.iloc[:, 2:]
+dataTrain = dataTrain.iloc[:, 1:]
 labelsTest = dataTest.iloc[:, 0:1]
-dataTest = dataTest.iloc[:, 2:]
+dataTest = dataTest.iloc[:, 1:]
 
 numAttr = getAttributes(dataTrain, excludeTypes="object")
 catAttr = getAttributes(dataTrain, includeTypes="object")
