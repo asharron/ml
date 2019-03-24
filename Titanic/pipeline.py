@@ -29,7 +29,7 @@ class MultiLabelEncoder(BaseEstimator, TransformerMixin):
         return self
     def transform(self, X):
         X = X.apply(LabelEncoder().fit_transform)
-        return X
+        return X.values
 
 def getAttributes(data, includeTypes=None, excludeTypes=None):
     return list(data.select_dtypes(include=includeTypes, exclude=excludeTypes).columns)
