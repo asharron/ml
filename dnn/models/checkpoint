@@ -1,0 +1,2 @@
+model_checkpoint_path: "classifier59.ckpt"
+all_model_checkpoint_paths: "classifier59.ckpt"
