@@ -107,8 +107,23 @@ with tf.name_scope("cnn"):
     conv1 = tf.layers.conv2d(X, filters=nFilters1, kernel_size=3, strides=1, padding="SAME", name="conv1")
     conv2 = tf.layers.conv2d(conv1, filters=nFilters2, kernel_size=3, strides=2, padding="SAME", name="conv2")
     pool3 = tf.nn.max_pool(conv1, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding="SAME")
-    pool3_flat = tf.reshape(pool3, shape=[-1, 32 * 14 * 14])
+    pool3_flat = tf.reshape(pool3, shape=[-1, 64 * 14 * 14])
     fc1 = tf.layers.dense(pool3_flat, 64, activation=tf.nn.relu, name="fc1")
+    encodingMean = tf.layers.dense(hidden2, nHidden3, activation=None)
+    encodingGamma = tf.layers.dense(hidden2, nHidden3, activation=None)
+    noise = tf.random_normal(tf.shape(encodingGamma), dtype=tf.float32)
+    encodingLayer = encodingMean + tf.exp(0.5 * encodingGamma) * noise
+    fc2 = tf.layers.dense(encodingLayer, 64, activation=tf.nn.relu, name="fc2")
+
+    hidden1 = tf.layers.dense(X, nHidden1, activation=tf.nn.relu, kernel_initializer=he, name="hidden1")
+    hidden2 = tf.layers.dense(hidden1, nHidden2, activation=tf.nn.relu, kernel_initializer=he, name="hidden2")
+    hidden3Mean = tf.layers.dense(hidden2, nHidden3, activation=None)
+    hidden3Gamma = tf.layers.dense(hidden2, nHidden3, activation=None)
+    noise = tf.random_normal(tf.shape(hidden3Gamma), dtype=tf.float32)
+    hidden3 = hidden3Mean + tf.exp(0.5 * hidden3Gamma) * noise
+    hidden4 = tf.layers.dense(hidden3, nHidden4, activation=tf.nn.relu, kernel_initializer=he, name="hidden4")
+    hidden5 = tf.layers.dense(hidden4, nHidden5, activation=tf.nn.relu, kernel_initializer=he, name="hidden5")
+    logits = tf.layers.dense(hidden5, nOutputs, activation=None)
 
 ################### End Graph Construction
 
