@@ -1,4 +1,5 @@
 import tensorflow as tf
+from tensorflow import keras
 import numpy as np
 import pandas as pd
 import os
@@ -135,5 +136,6 @@ with tf.Session() as sess:
         Xbatch = np.zeros((len(imageData), height, width, channels))
         for index, image in enumerate(imageData):
             Xbatch[index] = sess.run(cropImages, feed_dict={imageHolder: image})
+            model.train_on_batch(Xbatch, Xbatch)
 
 print("success")
