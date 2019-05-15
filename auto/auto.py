@@ -85,6 +85,7 @@ with tf.Session() as sess:
 	codings_rnd = np.random.normal(size=[nDigits, nHidden3])
 	outputs_val = outputs.eval(feed_dict={hidden3: codings_rnd})
 	plt.figure(figsize=(8,50))	
+
 for iteration in range(nDigits):
 	#plt.subplot(nDigits, 10, iteration + 1)
 	print(outputs_val)
