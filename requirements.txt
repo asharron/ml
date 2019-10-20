@@ -4,4 +4,4 @@ numpy
 pandas
 scipy
 sklearn
-tensorflow
+tensorflow-gpu
